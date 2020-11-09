@@ -3,6 +3,8 @@ var redis = require("redis"),
 var express = require("express");
 var app = express();
 var bodyParser = require("body-parser");
+var md5 = require("md5");
+
 app.use(bodyParser.json());
 
 const http = require("http");
@@ -32,51 +34,53 @@ process.on("unhandledRejection", err => {
   
   app.use(cors(corsOptions));
   
-  const db = require("./server/db/db.config.js");
-  
-  // force: true will drop the table if it already exists
-  db.sequelize.sync({ force: false }).then(() => {
-    console.log("Drop and Resync with { force: false }");
-  });
-  
-  const controller = require("./server/db/redisInfoController")(redisInfo);
+  let mm = require('./server/db/redisInfoModel');
 
+  mm.sync()  
+  // force: true will drop the table if it already exists
+  // mm.sync({ force: true }).then(() => {
+  //   console.log("Drop and Resync with { force: true }");
+  // });
+  
   //Create port and http server (this is the port that the API will run on)
   const port = process.env.PORT || "8088";
   app.set("port", port);
   const server = http.createServer(app);
   server.listen(port, () => console.log(`API running on localhost:${port}`));
   
-
-
   client.on("error", function (err) {
     console.log("Error " + err);
 });
 
-client.set("string key", "string val", redis.print);
-client.hset("hash key", "hashtest 1", "some value", redis.print);
+client.set("host", "127.0.0.1", redis.print);
+client.hset("host", "hashtest 1", "some value", redis.print);
 client.hset(["hash key", "hashtest 2", "some other value"], redis.print);
+
 client.hkeys("hash key", function (err, replies) {
-    console.log(replies.length + " replies:");
-    replies.forEach(function (reply, i) {
+    // console.log(replies.length + " replies:");
+     replies.forEach(function (reply, i) {
+      // console.log("----------------------"+ reply);
+
         let data = {
-          md5 :reply.md5,
-          port:reply.port,
-          host:reply.host,
-          password:reply.password,
-          addTime:Date.now()
+          md5 :md5hash(Date.now()),
+          port:12,
+          host:'test',
+          password:'test',
+         
         }
-        let mm = require("./server/db/commonModel")(redisInfo);
         mm.create(data)
           .then(result => {
-            res.json(result);
+            return result;
           })
           .catch(ee => {
-            console.log("in Create -> " + ee.message);
+            console.log("in Create -> " + ee);
             throw Error("An error occurred in create.");
           });
       
-        console.log("    " + i + ": " + reply);
-    });
+      });
     client.quit();
 });
+
+let md5hash = (data)=>{
+  return md5(data)
+}
